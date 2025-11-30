@@ -15,14 +15,14 @@ module.exports = {
         'refactor',
         'revert',
         'style',
-        'test'
-      ]
+        'test',
+      ],
     ],
-    'header-max-length': [2, 'always', 100],
-    'subject-full-stop': [2, 'never', '.']
+    'header-max-length': [2, 'always', 200],
+    'subject-full-stop': [0, 'never', '.'],
   },
   ignores: [
     (message) => message.includes('GitHub Classroom Feedback'),
-    (message) => message.includes('Setting up GitHub Classroom Feedback')
-  ]
+    (message) => message.includes('Setting up GitHub Classroom Feedback'),
+  ],
 };
