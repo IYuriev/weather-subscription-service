@@ -17,6 +17,11 @@
         "style",
         "test"
       ]
-    ]
-  }
+    ],
+    "header-max-length": [2, "always", 100]
+  },
+  "ignores": [
+    "GitHub Classroom Feedback",
+    "Setting up GitHub Classroom Feedback"
+  ]
 }
