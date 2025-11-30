@@ -7,11 +7,21 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "build:gateway": "nest build gateway",
+    "build:email": "nest build email",
+    "build:weather": "nest build weather",
+    "build:subscription": "nest build subscription",
+    "build:notification": "nest build notification",
     "start:gateway:dev": "nest start gateway --watch",
+    "start:gateway:prod": "node dist/apps/gateway/main",
     "start:email:dev": "nest start email --watch",
+    "start:email:prod": "node dist/apps/email/main",
     "start:weather:dev": "nest start weather --watch",
+    "start:weather:prod": "node dist/apps/weather/main",
     "start:subscription:dev": "nest start subscription --watch",
+    "start:subscription:prod": "node dist/apps/subscription/main",
     "start:notification:dev": "nest start notification --watch",
+    "start:notification:prod": "node dist/apps/notification/main",
     "proto:generate": "protoc --proto_path=libs/proto/src --plugin=protoc-gen-ts=./node_modules/.bin/protoc-gen-ts --ts_out=libs/proto/generated libs/proto/src/*.proto",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "nest start",
@@ -29,7 +39,9 @@
     "test:unit": "jest",
     "test:integration": "jest --config apps/gateway/test/jest.integration.config.js",
     "test:e2e": "playwright test apps/gateway/test/e2e",
-    "test:architecture": "jest --config apps/gateway/test/jest.architecture.config.json"
+    "test:architecture": "jest --config apps/gateway/test/jest.architecture.config.json",
+    "commitlint": "commitlint --edit",
+    "commitlint:last": "commitlint --last --verbose"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.6.0",
@@ -43,6 +55,7 @@
     "@nestjs/microservices": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schedule": "^6.0.0",
+    "@nestjs/cli": "^11.0.7",
     "@prisma/client": "^6.12.0",
     "@types/google-protobuf": "^3.15.12",
     "@willsoto/nestjs-prometheus": "^6.0.2",
@@ -67,7 +80,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
-    "@nestjs/cli": "^11.0.7",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
     "@playwright/test": "^1.53.0",
@@ -99,7 +111,9 @@
     "ts-proto": "^2.7.5",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "@commitlint/cli": "^18.4.3",
+    "@commitlint/config-conventional": "^18.4.3"
   },
   "jest": {
     "moduleFileExtensions": [
