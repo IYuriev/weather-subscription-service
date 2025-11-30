@@ -37,6 +37,9 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# Commitlint configuration (old JSON version)
+.commitlintrc.json
+
 # dotenv environment variable files
 .env
 .env.*
