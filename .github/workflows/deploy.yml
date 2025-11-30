@@ -1,0 +1,38 @@
+name: Production Deploy
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env
+
+      - name: Stop and remove old containers
+        run: |
+          docker-compose -f docker-compose.prod.yml down --remove-orphans || true
+
+      - name: Build and Start services
+        run: |
+          docker-compose -f docker-compose.prod.yml up -d --build
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services to start..."
+          sleep 30
+
+      - name: Check service status
+        run: |
+          docker-compose -f docker-compose.prod.yml ps
+
+      - name: Cleanup old images
+        run: |
+          docker image prune -f
