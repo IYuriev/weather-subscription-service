@@ -36,6 +36,7 @@ jobs:
           if [ "${{ github.event.pull_request.base.sha }}" != "" ]; then
             BASE_COMMIT=${{ github.event.pull_request.base.sha }}
           else
-            BASE_COMMIT=HEAD~${{ github.event.pull_request.commits }}
+            COMMIT_COUNT=$(( ${{ github.event.pull_request.commits }} > 50 ? 50 : ${{ github.event.pull_request.commits }} ))
+            BASE_COMMIT=HEAD~$COMMIT_COUNT
           fi
           npx commitlint --from $BASE_COMMIT --to ${{ github.event.pull_request.head.sha }} --verbose
