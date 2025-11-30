@@ -18,7 +18,7 @@ module.exports = {
         'test'
       ]
     ],
-    'header-max-length': [2, 'always', 100]
+    'header-max-length': [2, 'always', 200]
   },
   ignores: [
     (message) => message.includes('GitHub Classroom Feedback'),
