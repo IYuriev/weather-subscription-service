@@ -37,8 +37,12 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# Commitlint configuration (old JSON version)
+.commitlintrc.json
+
 # dotenv environment variable files
 .env
+.env.*
 .env.test
 .env.development.local
 .env.test.local
@@ -57,3 +61,7 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+/test-results
+
+actions-runner/

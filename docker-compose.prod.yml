@@ -1,0 +1,177 @@
+version: '3.8'
+
+volumes:
+  postgres-db:
+  redis-data:
+
+services:
+  db:
+    container_name: db
+    image: postgres:17-alpine
+    restart: always
+    shm_size: 128mb
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-weather-subscription-service}
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    ports:
+      - 5433:5432
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-weather-subscription-service}',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - 6380:6379
+    volumes:
+      - redis-data:/data
+
+  email:
+    container_name: email
+    build:
+      context: .
+      dockerfile: apps/email/Dockerfile
+    ports:
+      - 4000:4000
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+      kafka: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+    environment:
+      - KAFKA_BROKER_URL=${KAFKA_BROKER_URL}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - EMAIL_LOG_SAMPLE_RATE=${EMAIL_LOG_SAMPLE_RATE}
+      - HTTP_PORT=${EMAIL_SERVICE_HTTP_PORT}
+      - GRPC_URL=0.0.0.0:${EMAIL_SERVICE_GRPC_PORT}
+      - KAFKAJS_NO_PARTITIONER_WARNING=1
+
+  weather:
+    container_name: weather
+    build:
+      context: .
+      dockerfile: apps/weather/Dockerfile
+    ports:
+      - 4001:4001
+      - 5001:5001
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - WEATHER_API_URL=${WEATHER_API_URL}
+      - API_KEY=${WEATHER_API_KEY}
+      - OPEN_WEATHER_API_URL=${OPEN_WEATHER_API_URL}
+      - OPEN_WEATHER_API_KEY=${OPEN_WEATHER_API_KEY}
+      - HTTP_PORT=${WEATHER_SERVICE_HTTP_PORT}
+      - GRPC_URL=0.0.0.0:${WEATHER_SERVICE_GRPC_PORT}
+
+  subscription:
+    container_name: subscription
+    build:
+      context: .
+      dockerfile: apps/subscription/Dockerfile
+    ports:
+      - 4002:4002
+      - 5002:5002
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+      email: { condition: service_started }
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - EMAIL_GRPC_URL=${EMAIL_GRPC_URL}
+      - WEATHER_GRPC_URL=${WEATHER_GRPC_URL}
+      - CONFIRMATION_URL=${PUBLIC_APP_URL}${CONFIRMATION_URL_TEMPLATE}
+      - UNSUBSCRIBE_URL=${PUBLIC_APP_URL}${UNSUBSCRIBE_URL_TEMPLATE}
+      - HTTP_PORT=${SUBSCRIPTION_SERVICE_HTTP_PORT}
+      - GRPC_URL=0.0.0.0:${SUBSCRIPTION_SERVICE_GRPC_PORT}
+
+  notification:
+    container_name: notification
+    build:
+      context: .
+      dockerfile: apps/notification/Dockerfile
+    ports:
+      - 4003:4003
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - PORT=${NOTIFICATION_SERVICE_PORT}
+
+  gateway:
+    container_name: gateway
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    ports:
+      - 3000:3000
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    environment:
+      - WEATHER_GRPC_URL=${WEATHER_GRPC_URL}
+      - SUBSCRIPTION_GRPC_URL=${SUBSCRIPTION_GRPC_URL}
+      - EMAIL_GRPC_URL=${EMAIL_GRPC_URL}
+      - PORT=${GATEWAY_PORT}
+
+  kafka:
+    image: bitnamilegacy/kafka:4.0.0-debian-12-r10
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          '/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  kafka-init:
+    image: bitnamilegacy/kafka:4.0.0-debian-12-r10
+    depends_on:
+      kafka: { condition: service_healthy }
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        echo "Waiting for Kafka to be ready..."
+        sleep 10
+        echo "Creating Kafka topics..."
+        /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic send-confirmation-email --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 2>/dev/null || echo "Topic send-confirmation-email created or already exists"
+        /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic send-forecast-email --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 2>/dev/null || echo "Topic send-forecast-email created or already exists"
+        echo "Kafka topics initialization completed successfully"
+    restart: 'no'
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - '8080:8080'
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - DYNAMIC_CONFIG_ENABLED=true
