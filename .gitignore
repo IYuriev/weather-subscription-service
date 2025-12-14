@@ -64,4 +64,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /test-results
 
-actions-runner/
+actions-runner/*
+simple-load-test.js

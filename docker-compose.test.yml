@@ -44,6 +44,8 @@ services:
         condition: service_healthy
       redis-test:
         condition: service_started
+      kafka-init-test:
+        condition: service_completed_successfully
     command: npm run test:email
 
   gateway-integration-test:
@@ -174,7 +176,7 @@ services:
       - email-data-test:/app/node_modules
 
   kafka-test:
-    image: bitnami/kafka:latest
+    image: bitnami/kafka:4.0.0-debian-12-r10
     environment:
       - KAFKA_CFG_NODE_ID=0
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
@@ -191,6 +193,21 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+
+  kafka-init-test:
+    image: bitnami/kafka:4.0.0-debian-12-r10
+    depends_on:
+      kafka-test:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        echo "Creating Kafka topics for tests..."
+        sleep 5
+        /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic send-confirmation-email --bootstrap-server kafka-test:9092 --partitions 1 --replication-factor 1 --if-not-exists || echo "Topic send-confirmation-email created or already exists"
+        /opt/bitnami/kafka/bin/kafka-topics.sh --create --topic send-forecast-email --bootstrap-server kafka-test:9092 --partitions 1 --replication-factor 1 --if-not-exists || echo "Topic send-forecast-email created or already exists"
+        echo "Kafka topics initialization completed successfully"
+    restart: 'no'
 
   kafka-ui-test:
     image: provectuslabs/kafka-ui:latest
